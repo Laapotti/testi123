@@ -12,7 +12,11 @@ const { createRoom, listRooms } = require("./roomController");
 const app = express();
 
 // Enable CORS (Cross-Origin Resource Sharing)
-app.use(cors());
+app.use(cors({
+  origin: '*', // This allows any domain to access your server
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type'],
+}));
 
 // SSL Configuration (Optional)
 const sslOptions = process.env.SSL_ENABLED === "true"
