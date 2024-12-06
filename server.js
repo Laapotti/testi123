@@ -3,7 +3,7 @@ const http = require("http");
 const https = require("https");
 const fs = require("fs");
 const socketIo = require("socket.io");
-const cors = require("cors"); // Only define cors once
+const cors = require("cors");
 require("dotenv").config();
 
 const { registerUser, loginUser } = require("./userController");
@@ -13,10 +13,8 @@ const app = express();
 
 // Enable CORS (Cross-Origin Resource Sharing)
 app.use(cors({
-  origin: "*", // Allow all origins or specify the front-end origin like "http://localhost:8081"
+  origin: "*",  // Allow all origins or specify the front-end origin like "http://localhost:8081"
   methods: ["GET", "POST"],
-
-
   allowedHeaders: ["Content-Type"],
 }));
 
@@ -36,7 +34,7 @@ const server = sslOptions.key && sslOptions.cert
 // Initialize Socket.IO with the created server
 const io = socketIo(server, {
   cors: {
-    origin: "http://localhost:8081", // Replace with your front-end URL
+    origin: "http://localhost:8081",  // Replace with your front-end URL
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -61,52 +59,79 @@ io.on('connection', (socket) => {
   // Emit the user ID to the client
   socket.emit('user id', socket.id);
 
-  socket.on('join room', (roomID) => {
-      socket.join(roomID);
-      console.log(`Client ${socket.id} joined room ${roomID}`);
-
-      // Emit 'other user' event to all clients already in the room (except the current client)
-      const clientsInRoom = io.sockets.adapter.rooms.get(roomID);
-      if (clientsInRoom && clientsInRoom.size > 1) {
-          clientsInRoom.forEach(clientID => {
-              if (clientID !== socket.id) {
-                  io.to(clientID).emit('other user', socket.id);  // Notify the existing client of the new user
-                  socket.emit('other user', clientID);  // Notify the new user of the existing client
-              }
-          });
-      }
-  });
-
+  // Join room event
   socket.on('join room', (roomID) => {
     socket.join(roomID);
     console.log(`Client ${socket.id} joined room ${roomID}`);
+
+    // If the room doesn't exist in memory, create it
+    if (!rooms[roomID]) {
+      rooms[roomID] = [];
+    }
+
+    // Add the client to the room
+    rooms[roomID].push(socket.id);
+
+    // Notify existing clients in the room about the new user
+    if (rooms[roomID].length > 1) {
+      rooms[roomID].forEach(clientID => {
+        if (clientID !== socket.id) {
+          io.to(clientID).emit('other user', socket.id);  // Existing user notified
+          socket.emit('other user', clientID);  // New user notified
+        }
+      });
+    }
   });
 
-  socket.on('offer', (data) => {
-    const { target, roomID, signalData } = data;
-    socket.to(target).emit('offer', { signalData, roomID, sender: socket.id });
+  // Handle 'offer' event from a client
+  socket.on('offer', ({ target, roomID, signalData }) => {
+    console.log(`Sending offer from ${socket.id} to ${target} in room ${roomID}`);
+    io.to(target).emit('offer', {
+      sender: socket.id,
+      signalData,
+      roomID,
+    });
   });
 
-  socket.on('answer', (data) => {
-    const { target, signalData } = data;
-    socket.to(target).emit('answer', { signalData, roomID: data.roomID });
+  // Handle 'answer' event from a client
+  socket.on('answer', ({ target, roomID, signalData }) => {
+    console.log(`Sending answer from ${socket.id} to ${target} in room ${roomID}`);
+    io.to(target).emit('answer', {
+      sender: socket.id,
+      signalData,
+      roomID,
+    });
   });
 
-  socket.on('ice-candidate', (data) => {
-    socket.to(data.target).emit('ice-candidate', data);
+  // Handle 'candidate' event from a client
+  socket.on('candidate', ({ target, roomID, candidate }) => {
+    console.log(`Sending ICE candidate from ${socket.id} to ${target} in room ${roomID}`);
+    io.to(target).emit('candidate', { candidate });
   });
 
-  // Handle Disconnection
-  socket.on("disconnect", () => {
+  // Handle disconnection
+  socket.on('disconnect', () => {
     console.log("Client disconnected:", socket.id);
 
-    // Remove the user from rooms
+    // Remove the client from the room
     for (const roomID in rooms) {
-      rooms[roomID] = rooms[roomID].filter((id) => id !== socket.id);
+      const room = rooms[roomID];
+      const index = room.indexOf(socket.id);
 
-      // Optionally log if a room is now empty
-      if (rooms[roomID].length === 0) {
-        console.log(`Room ${roomID} is now empty.`);
+      if (index !== -1) {
+        room.splice(index, 1);  // Remove client from the room
+
+        // Notify other clients in the room about the disconnection
+        if (room.length > 0) {
+          room.forEach(clientID => {
+            io.to(clientID).emit('user left', socket.id);  // Notify other clients
+          });
+        }
+
+        // If the room is empty, remove it from memory
+        if (room.length === 0) {
+          delete rooms[roomID];
+        }
       }
     }
   });
