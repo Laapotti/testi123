@@ -54,60 +54,49 @@ io.on("connection", (socket) => {
   // Join Room Event
   socket.on("join room", (roomID) => {
     console.log(`${socket.id} joining room: ${roomID}`);
-
-    // Ensure room exists in memory
-    if (!rooms[roomID]) {
-      rooms[roomID] = [];
-    }
     
+    if (!rooms[roomID]) {
+        rooms[roomID] = [];
+    }
     rooms[roomID].push(socket.id); // Add socket to room
-
-    // Notify the other user in the room (if exists)
+    
+    // Notify other users in the room (if any)
     const otherUser = rooms[roomID].find((id) => id !== socket.id);
     if (otherUser) {
-      socket.emit("other user", otherUser); // Notify current user about the other user
-      socket.to(otherUser).emit("user joined", socket.id); // Notify other user about the new user
-    }
-  });
+        socket.emit("other user", otherUser);
+        socket.to(otherUser).emit("user joined", socket.id);
+    }else {
+      console.log("No other user in the room.");
+  }
+});
 
   // Handle WebRTC Offer
-  socket.on("offer", (payload) => {
-    console.log(`Offer from ${socket.id} to ${payload.target}`);
-    if (rooms[payload.roomID] && rooms[payload.roomID].includes(payload.target)) {
-      io.to(payload.target).emit("offer", {
-        sender: socket.id,
-        sdp: payload.sdp,
-      });
-    } else {
-      console.error(`Target ${payload.target} not found in room ${payload.roomID}`);
+  socket.on('offer', (payload) => {
+    if (!payload.roomID) {
+        console.error(`No room ID provided in offer from ${socket.id}`);
+        return;
     }
-  });
+    console.log(`Offer for room ${payload.roomID}`);
+    // Process offer
+});
 
-  // Handle WebRTC Answer
-  socket.on("answer", (payload) => {
-    console.log(`Answer from ${socket.id} to ${payload.target}`);
-    if (rooms[payload.roomID] && rooms[payload.roomID].includes(payload.target)) {
-      io.to(payload.target).emit("answer", {
-        sender: socket.id,
-        sdp: payload.sdp,
-      });
-    } else {
-      console.error(`Target ${payload.target} not found in room ${payload.roomID}`);
+socket.on('answer', (payload) => {
+    if (!payload.roomID) {
+        console.error(`No room ID provided in answer from ${socket.id}`);
+        return;
     }
-  });
+    console.log(`Answer for room ${payload.roomID}`);
+    // Process answer
+});
 
-  // Handle ICE Candidate
-  socket.on("ice-candidate", (payload) => {
-    console.log(`ICE candidate from ${socket.id} to ${payload.target}`);
-    if (rooms[payload.roomID] && rooms[payload.roomID].includes(payload.target)) {
-      io.to(payload.target).emit("ice-candidate", {
-        sender: socket.id,
-        candidate: payload.candidate,
-      });
-    } else {
-      console.error(`Target ${payload.target} not found in room ${payload.roomID}`);
+socket.on('ice-candidate', (payload) => {
+    if (!payload.roomID) {
+        console.error(`No room ID provided for ICE candidate from ${socket.id}`);
+        return;
     }
-  });
+    console.log(`ICE candidate for room ${payload.roomID}`);
+    // Process ICE candidate
+});
 
   // Handle Disconnection
   socket.on("disconnect", () => {
