@@ -58,65 +58,55 @@ io.on("connection", (socket) => {
   // Join Room Event
   socket.on("join room", (roomID) => {
     console.log(`${socket.id} joining room: ${roomID}`);
-    
+
     if (!rooms[roomID]) {
-        rooms[roomID] = [];
+      rooms[roomID] = [];
     }
     rooms[roomID].push(socket.id); // Add socket to room
-    
+
     // Notify other users in the room (if any)
     const otherUser = rooms[roomID].find((id) => id !== socket.id);
     if (otherUser) {
-        socket.emit("other user", otherUser);
-        socket.to(otherUser).emit("user joined", socket.id);
-    }else {
+      socket.emit("other user", otherUser);
+      socket.to(otherUser).emit("user joined", socket.id);
+    } else {
       console.log("No other user in the room.");
-  }
-});
+    }
+  });
 
   // Handle WebRTC Offer
   socket.on('offer', (payload) => {
     if (!payload.roomID) {
-        console.error(`No room ID provided in offer from ${socket.id}`);
-        return;
+      console.error(`No room ID provided in offer from ${socket.id}`);
+      return;
     }
     console.log(`Offer for room ${payload.roomID}`);
-    // Process offer
-});
+    // Relay offer to the target user in the room
+    socket.to(payload.roomID).emit('offer', payload);
+  });
 
-socket.on('answer', (payload) => {
+  // Handle WebRTC Answer
+  socket.on('answer', (payload) => {
     if (!payload.roomID) {
-        console.error(`No room ID provided in answer from ${socket.id}`);
-        return;
+      console.error(`No room ID provided in answer from ${socket.id}`);
+      return;
     }
     console.log(`Answer for room ${payload.roomID}`);
-    // Process answer
-});
+    // Relay answer to the caller in the room
+    socket.to(payload.roomID).emit('answer', payload);
+  });
 
-socket.on('ice-candidate', (payload) => {
-  if (!payload.roomID) {
+  // Handle ICE Candidate
+  socket.on('ice-candidate', (payload) => {
+    if (!payload.roomID) {
       console.error(`No room ID provided for ICE candidate from ${socket.id}`);
       return;
-  }
+    }
 
-  console.log(`ICE candidate for room ${payload.roomID}`);
-  
-  // Ensure that the peerRef exists and is valid
-  if (peerRef.current) {
-      const candidate = new RTCIceCandidate(payload.candidate);
-
-      // Add the ICE candidate to the peer connection
-      peerRef.current.addIceCandidate(candidate)
-          .then(() => {
-              console.log("ICE candidate added successfully.");
-          })
-          .catch((error) => {
-              console.error("Error adding ICE candidate", error);
-          });
-  } else {
-      console.error("Peer connection not found for room ID:", payload.roomID);
-  }
-});
+    console.log(`ICE candidate for room ${payload.roomID}`);
+    // Relay ICE candidate to the target user in the room
+    socket.to(payload.roomID).emit('ice-candidate', payload.candidate);
+  });
 
   // Handle Disconnection
   socket.on("disconnect", () => {
@@ -124,14 +114,14 @@ socket.on('ice-candidate', (payload) => {
 
     // Remove the user from rooms
     for (const roomID in rooms) {
-        rooms[roomID] = rooms[roomID].filter((id) => id !== socket.id);
+      rooms[roomID] = rooms[roomID].filter((id) => id !== socket.id);
 
-        // Optionally log if a room is now empty
-        if (rooms[roomID].length === 0) {
-            console.log(`Room ${roomID} is now empty.`);
-        }
+      // Optionally log if a room is now empty
+      if (rooms[roomID].length === 0) {
+        console.log(`Room ${roomID} is now empty.`);
+      }
     }
-});
+  });
 });
 
 // Start the server
