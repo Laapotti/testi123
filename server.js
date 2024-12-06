@@ -5,19 +5,20 @@ const fs = require("fs");
 const socket = require("socket.io");
 const cors = require("cors");
 require("dotenv").config();
+
+// Controllers
 const { registerUser, loginUser } = require("./userController");
 const { createRoom, listRooms } = require("./roomController");
 
-// Import wrtc for WebRTC in Node.js
-const wrtc = require("wrtc");
+const Peer = require("simple-peer");
 
 const app = express();
 
 // Enable CORS (Cross-Origin Resource Sharing)
 app.use(cors({
-  origin: '*', // This allows any domain to access your server
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type'],
+  origin: "*", // This allows any domain to access your server
+  methods: ["GET", "POST"],
+  allowedHeaders: ["Content-Type"],
 }));
 
 // SSL Configuration (Optional)
@@ -44,7 +45,7 @@ const io = socket(server, {
 // Middleware to parse JSON requests
 app.use(express.json());
 
-// API Routes (Optional)
+// API Routes
 app.post(["/register", "/api/register"], registerUser);
 app.post(["/login", "/api/login"], loginUser);
 app.post("/create-room", createRoom);
@@ -63,22 +64,22 @@ io.on("connection", (socket) => {
   // Join Room Event
   socket.on("join room", (roomID) => {
     console.log(`${socket.id} joining room: ${roomID}`);
-    
+
     if (!rooms[roomID]) {
-        rooms[roomID] = [];
+      rooms[roomID] = [];
     }
     rooms[roomID].push(socket.id); // Add socket to room
-    
+
     // Send the user ID back to the client
     socket.emit("user id", socket.id);
-    
+
     // Notify other users in the room (if any)
     const otherUser = rooms[roomID].find((id) => id !== socket.id);
     if (otherUser) {
-        socket.emit("other user", otherUser);
-        socket.to(otherUser).emit("user joined", socket.id);
+      socket.emit("other user", otherUser);
+      socket.to(otherUser).emit("user joined", socket.id);
     } else {
-        console.log("No other user in the room.");
+      console.log("No other user in the room.");
     }
   });
 
@@ -88,34 +89,24 @@ io.on("connection", (socket) => {
 
     // Initialize peer connection if not already done
     if (!peer) {
-      peer = new wrtc.RTCPeerConnection();  // Use wrtc.RTCPeerConnection instead of native RTCPeerConnection
+      peer = new wrtc.RTCPeerConnection(); // Use wrtc.RTCPeerConnection instead of native RTCPeerConnection
     }
 
     peer.setRemoteDescription(new wrtc.RTCSessionDescription(payload.offer))
-        .then(() => {
-            return peer.createAnswer();
-        })
-        .then((answer) => {
-            return peer.setLocalDescription(answer);
-        })
-        .then(() => {
-            socket.emit("answer", { roomID: payload.roomID, answer: peer.localDescription });
-        })
-        .catch((error) => {
-            console.error("Error handling offer:", error);
-        });
+      .then(() => peer.createAnswer())
+      .then((answer) => peer.setLocalDescription(answer))
+      .then(() => socket.emit("answer", { roomID: payload.roomID, answer: peer.localDescription }))
+      .catch((error) => console.error("Error handling offer:", error));
   });
 
   // Handle WebRTC Answer
   socket.on("answer", (payload) => {
     console.log("Answer received:", payload);
     if (!peer) {
-      peer = new wrtc.RTCPeerConnection();  // Use wrtc.RTCPeerConnection instead of native RTCPeerConnection
+      peer = new wrtc.RTCPeerConnection(); // Use wrtc.RTCPeerConnection instead of native RTCPeerConnection
     }
     peer.setRemoteDescription(new wrtc.RTCSessionDescription(payload.answer))
-        .catch((error) => {
-            console.error("Error setting remote description:", error);
-        });
+      .catch((error) => console.error("Error setting remote description:", error));
   });
 
   // Handle ICE Candidate
