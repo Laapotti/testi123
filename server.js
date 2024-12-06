@@ -15,6 +15,8 @@ const app = express();
 app.use(cors({
   origin: "*", // Allow all origins or specify the front-end origin like "http://localhost:8081"
   methods: ["GET", "POST"],
+
+
   allowedHeaders: ["Content-Type"],
 }));
 
@@ -54,7 +56,16 @@ const rooms = {};
 
 // Socket.IO Events
 io.on('connection', (socket) => {
-  console.log("New client connected:", socket.id);
+    console.log("New client connected:", socket.id);
+    
+    // Emit user ID to the client
+    socket.emit('user id', socket.id);
+
+    socket.on('join room', (roomID) => {
+        socket.join(roomID);
+        console.log(`Client ${socket.id} joined room ${roomID}`);
+    });
+
 
   socket.on('join room', (roomID) => {
     socket.join(roomID);
