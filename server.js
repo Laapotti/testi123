@@ -56,16 +56,26 @@ const rooms = {};
 
 // Socket.IO Events
 io.on('connection', (socket) => {
-    console.log("New client connected:", socket.id);
-    
-    // Emit user ID to the client
-    socket.emit('user id', socket.id);
+  console.log("New client connected:", socket.id);
 
-    socket.on('join room', (roomID) => {
-        socket.join(roomID);
-        console.log(`Client ${socket.id} joined room ${roomID}`);
-    });
+  // Emit the user ID to the client
+  socket.emit('user id', socket.id);
 
+  socket.on('join room', (roomID) => {
+      socket.join(roomID);
+      console.log(`Client ${socket.id} joined room ${roomID}`);
+
+      // Emit 'other user' event to all clients already in the room (except the current client)
+      const clientsInRoom = io.sockets.adapter.rooms.get(roomID);
+      if (clientsInRoom && clientsInRoom.size > 1) {
+          clientsInRoom.forEach(clientID => {
+              if (clientID !== socket.id) {
+                  io.to(clientID).emit('other user', socket.id);  // Notify the existing client of the new user
+                  socket.emit('other user', clientID);  // Notify the new user of the existing client
+              }
+          });
+      }
+  });
 
   socket.on('join room', (roomID) => {
     socket.join(roomID);
