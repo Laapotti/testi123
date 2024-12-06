@@ -3,7 +3,7 @@ const http = require("http");
 const https = require("https");
 const fs = require("fs");
 const socketIo = require("socket.io");
-const cors = require("cors");
+const cors = require("cors"); // Only define cors once
 require("dotenv").config();
 
 const { registerUser, loginUser } = require("./userController");
@@ -12,14 +12,10 @@ const { createRoom, listRooms } = require("./roomController");
 const app = express();
 
 // Enable CORS (Cross-Origin Resource Sharing)
-const cors = require("cors");
-
-// CORS Configuration to allow local development
 app.use(cors({
-  origin: ["http://localhost:8081",], // List your local development origins
+  origin: "*", // Allow all origins or specify the front-end origin like "http://localhost:8081"
   methods: ["GET", "POST"],
   allowedHeaders: ["Content-Type"],
-  credentials: true // Optional if you need to send cookies or other credentials
 }));
 
 // SSL Configuration (Optional)
@@ -36,7 +32,13 @@ const server = sslOptions.key && sslOptions.cert
   : http.createServer(app);
 
 // Initialize Socket.IO with the created server
-const io = socketIo(server);
+const io = socketIo(server, {
+  cors: {
+    origin: "http://localhost:8081", // Replace with your front-end URL
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+});
 
 // Middleware to parse JSON requests
 app.use(express.json());
