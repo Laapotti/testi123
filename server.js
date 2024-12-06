@@ -5,9 +5,11 @@ const fs = require("fs");
 const socket = require("socket.io");
 const cors = require("cors");
 require("dotenv").config();
-
 const { registerUser, loginUser } = require("./userController");
 const { createRoom, listRooms } = require("./roomController");
+
+// Import wrtc for WebRTC in Node.js
+const wrtc = require("wrtc");
 
 const app = express();
 
@@ -86,10 +88,10 @@ io.on("connection", (socket) => {
 
     // Initialize peer connection if not already done
     if (!peer) {
-      peer = new RTCPeerConnection();
+      peer = new wrtc.RTCPeerConnection();  // Use wrtc.RTCPeerConnection instead of native RTCPeerConnection
     }
 
-    peer.setRemoteDescription(new RTCSessionDescription(payload.offer))
+    peer.setRemoteDescription(new wrtc.RTCSessionDescription(payload.offer))
         .then(() => {
             return peer.createAnswer();
         })
@@ -108,9 +110,9 @@ io.on("connection", (socket) => {
   socket.on("answer", (payload) => {
     console.log("Answer received:", payload);
     if (!peer) {
-      peer = new RTCPeerConnection();
+      peer = new wrtc.RTCPeerConnection();  // Use wrtc.RTCPeerConnection instead of native RTCPeerConnection
     }
-    peer.setRemoteDescription(new RTCSessionDescription(payload.answer))
+    peer.setRemoteDescription(new wrtc.RTCSessionDescription(payload.answer))
         .catch((error) => {
             console.error("Error setting remote description:", error);
         });
