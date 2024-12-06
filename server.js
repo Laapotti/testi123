@@ -55,6 +55,9 @@ const rooms = {};
 io.on("connection", (socket) => {
   console.log("New client connected:", socket.id);
 
+  // Declare peer for each socket connection
+  let peer;
+
   // Join Room Event
   socket.on("join room", (roomID) => {
     console.log(`${socket.id} joining room: ${roomID}`);
@@ -75,11 +78,17 @@ io.on("connection", (socket) => {
     } else {
         console.log("No other user in the room.");
     }
-});
+  });
 
   // Handle WebRTC Offer
   socket.on("offer", (payload) => {
     console.log("Offer received from:", payload.userID);
+
+    // Initialize peer connection if not already done
+    if (!peer) {
+      peer = new RTCPeerConnection();
+    }
+
     peer.setRemoteDescription(new RTCSessionDescription(payload.offer))
         .then(() => {
             return peer.createAnswer();
@@ -89,13 +98,23 @@ io.on("connection", (socket) => {
         })
         .then(() => {
             socket.emit("answer", { roomID: payload.roomID, answer: peer.localDescription });
+        })
+        .catch((error) => {
+            console.error("Error handling offer:", error);
         });
-});
+  });
 
-socket.on("answer", (payload) => {
+  // Handle WebRTC Answer
+  socket.on("answer", (payload) => {
     console.log("Answer received:", payload);
-    peer.setRemoteDescription(new RTCSessionDescription(payload.answer));
-});
+    if (!peer) {
+      peer = new RTCPeerConnection();
+    }
+    peer.setRemoteDescription(new RTCSessionDescription(payload.answer))
+        .catch((error) => {
+            console.error("Error setting remote description:", error);
+        });
+  });
 
   // Handle ICE Candidate
   socket.on('ice-candidate', (payload) => {
@@ -121,6 +140,11 @@ socket.on("answer", (payload) => {
       if (rooms[roomID].length === 0) {
         console.log(`Room ${roomID} is now empty.`);
       }
+    }
+
+    // Clean up peer connection on disconnect
+    if (peer) {
+      peer.close();
     }
   });
 });
