@@ -12,10 +12,14 @@ const { createRoom, listRooms } = require("./roomController");
 const app = express();
 
 // Enable CORS (Cross-Origin Resource Sharing)
+const cors = require("cors");
+
+// CORS Configuration to allow local development
 app.use(cors({
-  origin: "*", // This allows any domain to access your server
+  origin: ["http://localhost:8081",], // List your local development origins
   methods: ["GET", "POST"],
   allowedHeaders: ["Content-Type"],
+  credentials: true // Optional if you need to send cookies or other credentials
 }));
 
 // SSL Configuration (Optional)
