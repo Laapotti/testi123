@@ -34,7 +34,7 @@ const server = sslOptions.key && sslOptions.cert
 // Initialize Socket.IO with the created server
 const io = socketIo(server, {
   cors: {
-    origin: "http://localhost:8081",  // Replace with your front-end URL
+    origin: ["http://localhost:8081", "http://localhost:8082"],  // Replace with your front-end URL
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -110,7 +110,7 @@ io.on('connection', (socket) => {
     io.to(target).emit('candidate', { candidate });
   });
   socket.on('new-ice-candidate', ({ candidate }) => {
-    console.log('[DEBUG] Received new ICE candidate:', candidate);
+    console.log('[DEBUG] Sending ICE candidate to target');
     io.to(target).emit('new-ice-candidate', candidate);
 });
 
