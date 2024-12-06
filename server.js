@@ -95,19 +95,24 @@ io.on('connection', (socket) => {
 
   // Handle 'answer' event from a client
   socket.on('answer', ({ target, roomID, signalData }) => {
-    console.log(`Sending answer from ${socket.id} to ${target} in room ${roomID}`);
+    console.log(`Received answer from ${socket.id} for room ${roomID}`);
+    console.log('Signal Data:', signalData);
     io.to(target).emit('answer', {
-      sender: socket.id,
-      signalData,
-      roomID,
+        sender: socket.id,
+        signalData,
+        roomID,
     });
-  });
+});
 
   // Handle 'candidate' event from a client
   socket.on('candidate', ({ target, roomID, candidate }) => {
     console.log(`Sending ICE candidate from ${socket.id} to ${target} in room ${roomID}`);
     io.to(target).emit('candidate', { candidate });
   });
+  socket.on('new-ice-candidate', ({ candidate }) => {
+    console.log('[DEBUG] Received new ICE candidate:', candidate);
+    io.to(target).emit('new-ice-candidate', candidate);
+});
 
   // Handle disconnection
   socket.on('disconnect', () => {
