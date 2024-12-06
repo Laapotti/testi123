@@ -102,7 +102,15 @@ socket.on('ice-candidate', (payload) => {
   socket.on("disconnect", () => {
     console.log("Client disconnected:", socket.id);
 
-  });
+    // Remove the user from rooms
+    for (const roomID in rooms) {
+        rooms[roomID] = rooms[roomID].filter((id) => id !== socket.id);
+
+        // Optionally log if a room is now empty
+        if (rooms[roomID].length === 0) {
+            console.log(`Room ${roomID} is now empty.`);
+        }
+    }
 });
 
 // Start the server
