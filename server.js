@@ -12,6 +12,7 @@ const { createRoom, listRooms } = require("./roomController"); // Room managemen
 
 const app = express();
 
+
 // Enable CORS (Cross-Origin Resource Sharing)
 app.use(cors());
 
@@ -113,7 +114,8 @@ io.on("connection", (socket) => {
 });
 
 // Start the server
-const port = process.env.PORT || 10000;
+const port = process.env.PORT || 9000;
+
 server.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+  console.log(`Server listening on port ${port}`);
 });
