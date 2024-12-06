@@ -29,8 +29,8 @@ const readData = () => {
             return JSON.parse(decrypted); // Palautetaan purettu data
         }
 
-        // Palautetaan tyhjä data, jos tiedostoa ei ole
-        return { rooms: {}, users: {} };
+        // jos tiedosta ei ole luodaan tiedosto
+        createAndSaveData();
     } catch (error) {
         console.error("Virhe salatun datan lukemisessa:", error);
         throw new Error("Virhe salatun datan lukemisessa.");
@@ -112,6 +112,17 @@ const createRoom = (roomID) => {
     // Tallennetaan data
     writeData(data);
 };
+
+const createAndSaveData = () => {
+    const defaultData = {
+      rooms: [],
+      users: [],
+    };
+  
+    writeData(defaultData);
+    return defaultData;
+  };
+  
 
 // Funktio liittymiseen huoneeseen
 const joinRoom = (roomID, username) => {
