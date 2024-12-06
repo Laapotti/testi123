@@ -2,15 +2,12 @@ const express = require("express");
 const http = require("http");
 const https = require("https");
 const fs = require("fs");
-const socket = require("socket.io");
+const socketIo = require("socket.io");
 const cors = require("cors");
 require("dotenv").config();
 
-// Controllers
 const { registerUser, loginUser } = require("./userController");
 const { createRoom, listRooms } = require("./roomController");
-
-const Peer = require("simple-peer");
 
 const app = express();
 
@@ -34,13 +31,8 @@ const server = sslOptions.key && sslOptions.cert
   ? https.createServer(sslOptions, app)
   : http.createServer(app);
 
-// Initialize Socket.IO
-const io = socket(server, {
-  cors: {
-    origin: "*", // Update with specific client origin in production
-    methods: ["GET", "POST"],
-  },
-});
+// Initialize Socket.IO with the created server
+const io = socketIo(server);
 
 // Middleware to parse JSON requests
 app.use(express.json());
@@ -55,70 +47,26 @@ app.get("/rooms", listRooms);
 const rooms = {};
 
 // Socket.IO Events
-io.on("connection", (socket) => {
+io.on('connection', (socket) => {
   console.log("New client connected:", socket.id);
 
-  // Declare peer for each socket connection
-  let peer;
-
-  // Join Room Event
-  socket.on("join room", (roomID) => {
-    console.log(`${socket.id} joining room: ${roomID}`);
-
-    if (!rooms[roomID]) {
-      rooms[roomID] = [];
-    }
-    rooms[roomID].push(socket.id); // Add socket to room
-
-    // Send the user ID back to the client
-    socket.emit("user id", socket.id);
-
-    // Notify other users in the room (if any)
-    const otherUser = rooms[roomID].find((id) => id !== socket.id);
-    if (otherUser) {
-      socket.emit("other user", otherUser);
-      socket.to(otherUser).emit("user joined", socket.id);
-    } else {
-      console.log("No other user in the room.");
-    }
+  socket.on('join room', (roomID) => {
+    socket.join(roomID);
+    console.log(`Client ${socket.id} joined room ${roomID}`);
   });
 
-  // Handle WebRTC Offer
-  socket.on("offer", (payload) => {
-    console.log("Offer received from:", payload.userID);
-
-    // Initialize peer connection if not already done
-    if (!peer) {
-      peer = new wrtc.RTCPeerConnection(); // Use wrtc.RTCPeerConnection instead of native RTCPeerConnection
-    }
-
-    peer.setRemoteDescription(new wrtc.RTCSessionDescription(payload.offer))
-      .then(() => peer.createAnswer())
-      .then((answer) => peer.setLocalDescription(answer))
-      .then(() => socket.emit("answer", { roomID: payload.roomID, answer: peer.localDescription }))
-      .catch((error) => console.error("Error handling offer:", error));
+  socket.on('offer', (data) => {
+    const { target, roomID, signalData } = data;
+    socket.to(target).emit('offer', { signalData, roomID, sender: socket.id });
   });
 
-  // Handle WebRTC Answer
-  socket.on("answer", (payload) => {
-    console.log("Answer received:", payload);
-    if (!peer) {
-      peer = new wrtc.RTCPeerConnection(); // Use wrtc.RTCPeerConnection instead of native RTCPeerConnection
-    }
-    peer.setRemoteDescription(new wrtc.RTCSessionDescription(payload.answer))
-      .catch((error) => console.error("Error setting remote description:", error));
+  socket.on('answer', (data) => {
+    const { target, signalData } = data;
+    socket.to(target).emit('answer', { signalData, roomID: data.roomID });
   });
 
-  // Handle ICE Candidate
-  socket.on('ice-candidate', (payload) => {
-    if (!payload.roomID) {
-      console.error(`No room ID provided for ICE candidate from ${socket.id}`);
-      return;
-    }
-
-    console.log(`ICE candidate for room ${payload.roomID}`);
-    // Relay ICE candidate to the target user in the room
-    socket.to(payload.roomID).emit('ice-candidate', payload.candidate);
+  socket.on('ice-candidate', (data) => {
+    socket.to(data.target).emit('ice-candidate', data);
   });
 
   // Handle Disconnection
@@ -133,11 +81,6 @@ io.on("connection", (socket) => {
       if (rooms[roomID].length === 0) {
         console.log(`Room ${roomID} is now empty.`);
       }
-    }
-
-    // Clean up peer connection on disconnect
-    if (peer) {
-      peer.close();
     }
   });
 });
