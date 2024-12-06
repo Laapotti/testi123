@@ -58,21 +58,24 @@ io.on("connection", (socket) => {
   // Join Room Event
   socket.on("join room", (roomID) => {
     console.log(`${socket.id} joining room: ${roomID}`);
-
+    
     if (!rooms[roomID]) {
-      rooms[roomID] = [];
+        rooms[roomID] = [];
     }
     rooms[roomID].push(socket.id); // Add socket to room
-
+    
+    // Send the user ID back to the client
+    socket.emit("user id", socket.id);
+    
     // Notify other users in the room (if any)
     const otherUser = rooms[roomID].find((id) => id !== socket.id);
     if (otherUser) {
-      socket.emit("other user", otherUser);
-      socket.to(otherUser).emit("user joined", socket.id);
+        socket.emit("other user", otherUser);
+        socket.to(otherUser).emit("user joined", socket.id);
     } else {
-      console.log("No other user in the room.");
+        console.log("No other user in the room.");
     }
-  });
+});
 
   // Handle WebRTC Offer
   socket.on('offer', (payload) => {
