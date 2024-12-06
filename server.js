@@ -90,12 +90,28 @@ socket.on('answer', (payload) => {
 });
 
 socket.on('ice-candidate', (payload) => {
-    if (!payload.roomID) {
-        console.error(`No room ID provided for ICE candidate from ${socket.id}`);
-        return;
-    }
-    console.log(`ICE candidate for room ${payload.roomID}`);
-    // Process ICE candidate
+  if (!payload.roomID) {
+      console.error(`No room ID provided for ICE candidate from ${socket.id}`);
+      return;
+  }
+
+  console.log(`ICE candidate for room ${payload.roomID}`);
+  
+  // Ensure that the peerRef exists and is valid
+  if (peerRef.current) {
+      const candidate = new RTCIceCandidate(payload.candidate);
+
+      // Add the ICE candidate to the peer connection
+      peerRef.current.addIceCandidate(candidate)
+          .then(() => {
+              console.log("ICE candidate added successfully.");
+          })
+          .catch((error) => {
+              console.error("Error adding ICE candidate", error);
+          });
+  } else {
+      console.error("Peer connection not found for room ID:", payload.roomID);
+  }
 });
 
   // Handle Disconnection
