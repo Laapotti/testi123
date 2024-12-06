@@ -69,6 +69,7 @@ io.on("connection", (socket) => {
       console.log("No other user in the room.");
   }
 });
+});
 
   // Handle WebRTC Offer
   socket.on('offer', (payload) => {
