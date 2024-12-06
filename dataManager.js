@@ -114,6 +114,7 @@ const createRoom = (roomID) => {
 };
 
 
+
 // Funktio liittymiseen huoneeseen
 const joinRoom = (roomID, username) => {
     const data = readData(); // Lataa tiedot

@@ -3,7 +3,12 @@ const { readData, writeData } = require('./dataManager');
 // Funktio huoneen luomiseen
 const createRoom = async (req, res) => {
     try {
-        const roomID = req.body.roomID;
+        const { roomID } = req.body;
+
+        if (!roomID) {
+            return res.status(400).json({ error: 'Huoneen ID ei voi olla tyhjä.' });
+        }
+
         const data = readData(); // Lataa nykyinen data
 
         // Varmista, että rooms on taulukko
@@ -23,12 +28,13 @@ const createRoom = async (req, res) => {
         // Tallennetaan päivitettu data
         writeData(data);
 
-        return res.status(201).json({ message: 'Huone luotu onnistuneesti!', roomID: roomID });
+        return res.status(201).json({ message: 'Huone luotu onnistuneesti!', roomID });
     } catch (error) {
-        console.error(error); // Lisää virheiden tulostus konsoliin virheiden jäljittämistä varten
+        console.error('Error creating room:', error); // Lisää virheiden tulostus konsoliin virheiden jäljittämistä varten
         return res.status(500).json({ error: 'Virhe huoneen luomisessa.' });
     }
 };
+
 
 // Huoneiden listaamiseen
 const listRooms = async (req, res) => {

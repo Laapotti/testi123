@@ -58,60 +58,69 @@ io.on("connection", (socket) => {
   socket.on("join room", (roomID) => {
     console.log(`${socket.id} joining room: ${roomID}`);
 
-    // Add the user to the room
     if (!rooms[roomID]) {
       rooms[roomID] = [];
     }
     rooms[roomID].push(socket.id);
-
-    // Notify the other user in the room
+    
     const otherUser = rooms[roomID].find((id) => id !== socket.id);
     if (otherUser) {
       socket.emit("other user", otherUser); // Notify the current user about the other user
       socket.to(otherUser).emit("user joined", socket.id); // Notify the other user about the new user
     }
+});
   });
 
   // Handle WebRTC Offer
   socket.on("offer", (payload) => {
     console.log(`Offer from ${socket.id} to ${payload.target}`);
-    io.to(payload.target).emit("offer", {
-      sender: socket.id,
-      sdp: payload.sdp,
-    });
+    if (rooms[payload.roomID] && rooms[payload.roomID].includes(payload.target)) {
+      io.to(payload.target).emit("offer", {
+        sender: socket.id,
+        sdp: payload.sdp,
+      });
+    } else {
+      console.error(`Target ${payload.target} not found in room ${payload.roomID}`);
+    }
   });
 
   // Handle WebRTC Answer
   socket.on("answer", (payload) => {
     console.log(`Answer from ${socket.id} to ${payload.target}`);
-    io.to(payload.target).emit("answer", {
-      sender: socket.id,
-      sdp: payload.sdp,
-    });
+    if (rooms[payload.roomID] && rooms[payload.roomID].includes(payload.target)) {
+      io.to(payload.target).emit("answer", {
+        sender: socket.id,
+        sdp: payload.sdp,
+      });
+    } else {
+      console.error(`Target ${payload.target} not found in room ${payload.roomID}`);
+    }
   });
 
   // Handle ICE Candidate
   socket.on("ice-candidate", (payload) => {
     console.log(`ICE candidate from ${socket.id} to ${payload.target}`);
-    io.to(payload.target).emit("ice-candidate", {
-      sender: socket.id,
-      candidate: payload.candidate,
-    });
+    if (rooms[payload.roomID] && rooms[payload.roomID].includes(payload.target)) {
+      io.to(payload.target).emit("ice-candidate", {
+        sender: socket.id,
+        candidate: payload.candidate,
+      });
+    } else {
+      console.error(`Target ${payload.target} not found in room ${payload.roomID}`);
+    }
   });
 
   // Handle Disconnection
   socket.on("disconnect", () => {
     console.log("Client disconnected:", socket.id);
-
-    // Remove user from rooms
+  
     for (const roomID in rooms) {
       rooms[roomID] = rooms[roomID].filter((id) => id !== socket.id);
       if (rooms[roomID].length === 0) {
-        delete rooms[roomID]; // Clean up empty rooms
+        delete rooms[roomID];
       }
     }
   });
-});
 
 // Start the server
 const port = process.env.PORT || 9000;
