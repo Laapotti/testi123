@@ -34,7 +34,7 @@ const server = sslOptions.key && sslOptions.cert
 // Initialize Socket.IO with the created server
 const io = socketIo(server, {
   cors: {
-    origin: ["http://localhost:8081", "http://localhost:8082"],  // Replace with your front-end URL
+    origin: "*",  // Allow all origins for now
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -83,36 +83,15 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Handle 'offer' event from a client
-  socket.on('offer', ({ target, roomID, signalData }) => {
-    console.log(`Sending offer from ${socket.id} to ${target} in room ${roomID}`);
-    io.to(target).emit('offer', {
+  // Handle 'message' event from a client
+  socket.on('message', (messageData) => {
+    console.log('[DEBUG] Broadcasting message to room:', messageData.roomID);
+    // Broadcast message to all clients in the same room
+    socket.to(messageData.roomID).emit('message', {
       sender: socket.id,
-      signalData,
-      roomID,
+      text: messageData.text,
     });
   });
-
-  // Handle 'answer' event from a client
-  socket.on('answer', ({ target, roomID, signalData }) => {
-    console.log(`Received answer from ${socket.id} for room ${roomID}`);
-    console.log('Signal Data:', signalData);
-    io.to(target).emit('answer', {
-        sender: socket.id,
-        signalData,
-        roomID,
-    });
-});
-
-  // Handle 'candidate' event from a client
-  socket.on('candidate', ({ target, roomID, candidate }) => {
-    console.log(`Sending ICE candidate from ${socket.id} to ${target} in room ${roomID}`);
-    io.to(target).emit('candidate', { candidate });
-  });
-  socket.on('new-ice-candidate', ({ candidate }) => {
-    console.log('[DEBUG] Sending ICE candidate to target');
-    io.to(target).emit('new-ice-candidate', candidate);
-});
 
   // Handle disconnection
   socket.on('disconnect', () => {
