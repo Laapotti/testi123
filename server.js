@@ -78,26 +78,24 @@ io.on("connection", (socket) => {
 });
 
   // Handle WebRTC Offer
-  socket.on('offer', (payload) => {
-    if (!payload.roomID) {
-      console.error(`No room ID provided in offer from ${socket.id}`);
-      return;
-    }
-    console.log(`Offer for room ${payload.roomID}`);
-    // Relay offer to the target user in the room
-    socket.to(payload.roomID).emit('offer', payload);
-  });
+  socket.on("offer", (payload) => {
+    console.log("Offer received from:", payload.userID);
+    peer.setRemoteDescription(new RTCSessionDescription(payload.offer))
+        .then(() => {
+            return peer.createAnswer();
+        })
+        .then((answer) => {
+            return peer.setLocalDescription(answer);
+        })
+        .then(() => {
+            socket.emit("answer", { roomID: payload.roomID, answer: peer.localDescription });
+        });
+});
 
-  // Handle WebRTC Answer
-  socket.on('answer', (payload) => {
-    if (!payload.roomID) {
-      console.error(`No room ID provided in answer from ${socket.id}`);
-      return;
-    }
-    console.log(`Answer for room ${payload.roomID}`);
-    // Relay answer to the caller in the room
-    socket.to(payload.roomID).emit('answer', payload);
-  });
+socket.on("answer", (payload) => {
+    console.log("Answer received:", payload);
+    peer.setRemoteDescription(new RTCSessionDescription(payload.answer));
+});
 
   // Handle ICE Candidate
   socket.on('ice-candidate', (payload) => {
