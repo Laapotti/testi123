@@ -82,13 +82,14 @@ io.on('connection', (socket) => {
       });
     }
   });
+  
 
   // Handle 'message' event from a client
   socket.on('message', (messageData) => {
     console.log('[DEBUG] Broadcasting message to room:', messageData.roomID);
     // Broadcast message to all clients in the same room
     socket.to(messageData.roomID).emit('message', {
-      sender: socket.id,
+      sender: messageData.sender,
       text: messageData.text,
     });
   });
